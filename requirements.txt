@@ -1,0 +1,51 @@
+# REDITUS Voice Assistant - Dependencies (fully self-hosted audio stack)
+# Install with: pip install -r requirements.txt
+#
+# Stack: OmniRouter (LLM, OpenAI-compatible)
+#        -> sherpa-onnx Parakeet-TDT-0.6B-v2 int8 (local STT, primary)
+#        -> faster-whisper distil-large-v3 int8 (local STT, fallback)
+#        -> kokoro-onnx Kokoro-82M fp32 (local TTS, in-process)
+#        -> Silero VAD + livekit turn-detector (local EOU)
+# No cloud audio APIs are used at runtime.
+
+# -- LiveKit core ------------------------------------------------------------
+# livekit-agents pulls in `livekit` (the WebRTC SDK) and `livekit-api` at the
+# exact versions it is tested against; do not list `livekit` separately.
+livekit-agents>=1.8.4
+
+# -- LLM: OmniRouter via the OpenAI-compatible plugin -------------------------
+livekit-plugins-openai>=1.8.4
+
+# -- Turn detection: livekit.agents.inference.TurnDetector (local v1-mini) -----
+# Runs in-process via livekit.local_inference (shipped inside the livekit
+# package); no separate plugin install and no cloud inference needed.
+
+# -- STT primary: sherpa-onnx + Parakeet-TDT-0.6B-v2 int8 ---------------------
+# Model files (~630 MB) download separately, see models/parakeet/README note:
+#   https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2
+sherpa-onnx>=1.13
+
+# -- STT fallback: faster-whisper (distil-large-v3 int8 on CPU) ---------------
+# Weights (~1.5 GB) download from HF on first use of STT_BACKEND=whisper.
+faster-whisper>=1.0.0
+
+# -- VAD: Silero (local, bundled ONNX model) ----------------------------------
+livekit-plugins-silero>=1.8.4
+
+# -- TTS: Kokoro-82M in-process via ONNX Runtime -------------------------------
+# fp32 model required on CPUs without AVX512-VNNI (int8 is ~11x slower there).
+# Model files: models/kokoro/kokoro-v1.0.onnx + voices-v1.0.bin
+kokoro-onnx>=0.6.1
+
+# onnxruntime is pulled in transitively (silero + kokoro-onnx need >=1.20.1);
+# listed explicitly so the floor is visible.
+onnxruntime>=1.20.1
+
+# -- Audio / utilities ----------------------------------------------------------
+soundfile>=0.12.1
+numpy>=1.26.0
+python-dotenv>=1.0.0
+
+# huggingface-hub: model downloads only (turn-detector ONNX, whisper fallback).
+# No HF inference API calls at runtime.
+huggingface-hub>=0.34.0
